@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import './App.css';
 
 const token = import.meta.env.VITE_TOKEN;
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 5;
 
 const queryBuilder = (query: string) => {
   return fetch('https://api.github.com/graphql', {
@@ -16,11 +16,31 @@ const queryBuilder = (query: string) => {
   }).then((res) => res.json());
 };
 
+const getAll = async () => {
+  return await queryBuilder(`
+  query { 
+    viewer { 
+      repositories (first:100, orderBy:{field:UPDATED_AT, direction:DESC}) {
+        totalCount   
+        pageInfo {
+          endCursor
+        }
+        edges {
+          cursor
+          node {
+            name
+          }
+        }
+      }
+    }
+  }`)
+}
+
 const getTotalPages = () => {
   return queryBuilder(`
   query { 
     viewer { 
-      repositories (first:10, orderBy:{field:UPDATED_AT, direction:DESC}) {
+      repositories (first:${PAGE_SIZE}, orderBy:{field:UPDATED_AT, direction:DESC}) {
         totalCount   
       }
     }
@@ -54,96 +74,88 @@ const getCursor = async (pageSize: number, prev: string) => {
   return endCursor;
 }
 
-const getAll = async () => {
-  const allPages = await queryBuilder(`
-  query { 
-    viewer { 
-      repositories (first:100, orderBy:{field:UPDATED_AT, direction:DESC}) {
-        totalCount   
-        pageInfo {
-          endCursor
-        }
-        edges {
-          cursor
-          node {
-            name
-          }
-        }
-      }
-    }
-  }`)
-
-
-}
-
-
-const getRepositories = async () => {
-  const totalPages = Math.ceil(await getTotalPages() / PAGE_SIZE)
-  await getAll();
-
-
-  const cursors = [];
-  for (let i = 0; i < totalPages; i++) {
-    if (i == 0) {
-      const cursor = await getCursor(PAGE_SIZE);
-      cursors.push(cursor);
-    } else if (i == totalPages - 1) {
-      console.log('last step')
-    } else {
-      const cursor = await (getCursor(PAGE_SIZE, cursors[i - 1]))
-      cursors.push(cursor);
-    }
-  }
-  return cursors;
-}
-
-
 
 
 function App() {
   const [pageCursors, setPagesCursors] = useState([]);
-  const [totalRepos, setTotalRepos] = useState([]);
-  const [currentRepos, setCurrentRepos] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [perPage, setPerPage] = useState(4);
-  const [loading, setLoading] = useState(false);
-  const lastItem = currentPage * perPage;
-  const firstItem = lastItem - perPage;
-  const totalPages = currentRepos.length / perPage;
+  const [repositoriesList, setRepositoriesList] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageNodes = [];
 
-  // const [cursors, setCursors] = useState([]);
-  var cursors: any = [];
+  const getCursors = async () => {
+    const totalPages = Math.ceil(await getTotalPages() / PAGE_SIZE)
+    const cursors = ["",];
 
-  const setData = async () => {
-    const pages = await getRepositories();
-    setPagesCursors(pages);
-
+    setTotalPages(totalPages);
+    await getAll();
+    for (let i = 0; i <= totalPages; i++) {
+      if (i !== 0) {
+        const cursor = await (getCursor(PAGE_SIZE, cursors[i - 1]))
+        cursors.push(cursor);       
+      }      
+    }
+    return cursors;
   }
 
-  const increasePage = (page) => {
-    setCurrentPage(page)
-  };
+  const setData = async () => {
+    const pages = await getCursors();
+    setPagesCursors(pages);
+  }
 
-  const updateRepos = () => {
-    setCurrentRepos(totalRepos.slice(firstItem, lastItem));
-  };
-
-  const handlePageClick = (evt) => {
+  const handlePageClick = async (evt) => {
     const page = evt.target.textContent;
-    console.log(page);
-  
-    const pageCursor = pageCursors[page];
-    // TODO write a function call that would use pageCursor to paginate    
+    const pageData = await getPage(page);
+    const { data: { viewer: { repositories: { edges } } } } = pageData
+    setRepositoriesList(edges.map((el) => (el.node.name)));
+  }
+
+  const getPage = async (page: number) => {
+    if (page == 1) {
+      return await queryBuilder(`
+      {
+        viewer {
+          repositories(first: ${PAGE_SIZE}, orderBy: {field: UPDATED_AT, direction: DESC}) {      
+            edges {             
+              node {
+                name
+              }
+            }
+          }
+        }
+      }
+      `)
+    } else {
+      return await queryBuilder(`
+      {
+        viewer {
+          repositories(first: ${PAGE_SIZE}, orderBy: {field: UPDATED_AT, direction: DESC}, after:"${pageCursors[page - 1]}") {      
+            edges {            
+              node {
+                name
+              }
+            }
+          }
+        }
+      }
+      `)
+    }
   }
 
   useEffect(() => {
     setData();
   }, []);
-  useEffect(() => updateRepos, [currentPage]);
+
+  for (let i = 0; i < totalPages; i++) {
+    pageNodes.push(<li key={i} onClick={((evt) => handlePageClick(evt))}>{i + 1}</li>)
+  }
+
   return (
     <>
+      <div>
+        {repositoriesList.map((el, i) => (<p key={i}>{el}</p>))}
+      </div>
       <ul>
-        {pageCursors.map((page, i) => (<li onClick={(evt) => handlePageClick(evt)} key={page}>{i + 1}</li>))}
+        {pageNodes}
       </ul>
     </>
   );
