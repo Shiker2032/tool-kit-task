@@ -1,9 +1,11 @@
 //@ts-nocheck
 import { useEffect, useState } from 'react';
-import './App.css';
+import "./App.scss"
+import Pagination from './components/Pagination';
+import Explorer from './components/Explorer';
 
 const token = import.meta.env.VITE_TOKEN;
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 2;
 
 const queryBuilder = (query: string) => {
   return fetch('https://api.github.com/graphql', {
@@ -80,6 +82,7 @@ function App() {
   const [pageCursors, setPagesCursors] = useState([]);
   const [repositoriesList, setRepositoriesList] = useState([]);
   const [totalPages, setTotalPages] = useState(0);
+  const [isLoading, setIsLoading,] = useState(false);
   const pageNodes = [];
 
   const getCursors = async () => {
@@ -91,22 +94,25 @@ function App() {
     for (let i = 0; i <= totalPages; i++) {
       if (i !== 0) {
         const cursor = await (getCursor(PAGE_SIZE, cursors[i - 1]))
-        cursors.push(cursor);       
-      }      
+        cursors.push(cursor);
+      }
     }
     return cursors;
   }
 
   const setData = async () => {
-    const pages = await getCursors();
+    setIsLoading(true);
+    const pages = await getCursors()
     setPagesCursors(pages);
+    await getPage(1);
+    setIsLoading(false)
   }
 
   const handlePageClick = async (evt) => {
     const page = evt.target.textContent;
     const pageData = await getPage(page);
     const { data: { viewer: { repositories: { edges } } } } = pageData
-    setRepositoriesList(edges.map((el) => (el.node.name)));
+    setRepositoriesList(edges.map((el) => (el.node)));
   }
 
   const getPage = async (page: number) => {
@@ -118,6 +124,10 @@ function App() {
             edges {             
               node {
                 name
+                stargazerCount
+                updatedAt
+                url
+                description
               }
             }
           }
@@ -132,6 +142,10 @@ function App() {
             edges {            
               node {
                 name
+                stargazerCount
+                updatedAt
+                url
+                description
               }
             }
           }
@@ -145,19 +159,20 @@ function App() {
     setData();
   }, []);
 
-  for (let i = 0; i < totalPages; i++) {
-    pageNodes.push(<li key={i} onClick={((evt) => handlePageClick(evt))}>{i + 1}</li>)
-  }
-
   return (
-    <>
-      <div>
-        {repositoriesList.map((el, i) => (<p key={i}>{el}</p>))}
+    <section className='home'>
+      <div className="container">
+        <div className='explorer'>
+          {isLoading ? (<>Loading...</>) : (
+            <Explorer items={repositoriesList}></Explorer>
+          )
+          }
+        </div>
+        <div className='pagination'>
+          <Pagination pages={totalPages} handleClick={handlePageClick} />
+        </div>
       </div>
-      <ul>
-        {pageNodes}
-      </ul>
-    </>
+    </section>
   );
 }
 
