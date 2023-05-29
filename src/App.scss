@@ -45,7 +45,7 @@ a {
   display: flex;
   color: white;  
   .card {
-    padding: 14px;
+    padding: 30px 14px;
     border-radius: 12px;
     border: 1px solid white;
     background-color: #474747;
@@ -53,7 +53,8 @@ a {
     text-align: initial;
     .title {
       text-align: center;
-      margin-bottom: 12px;
+      margin-bottom: 12px;     
+      text-transform: uppercase 
     }
     .info-list {
       list-style: none;

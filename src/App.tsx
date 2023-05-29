@@ -1,8 +1,8 @@
-//@ts-nocheck
 import { useEffect, useState } from 'react';
 import './App.scss';
 import Pagination from './components/Pagination';
 import Explorer from './components/Explorer';
+import { EdgeNode } from './types';
 
 const token = import.meta.env.VITE_TOKEN;
 const PAGE_SIZE = 5;
@@ -91,11 +91,20 @@ const getCursor = async (pageSize: number, prev: string) => {
 };
 
 function App() {
-  const [pageCursors, setPagesCursors] = useState([]);
-  const [repositoriesList, setRepositoriesList] = useState([]);
+  const [pageCursors, setPagesCursors] = useState(['']);
+  const [repositoriesList, setRepositoriesList] = useState<EdgeNode[]>([
+    {
+      node: {
+        description: 'Описание',
+        name: 'Имя',
+        stargazerCount: 0,
+        updatedAt: 'Дата обновления',
+        url: 'ссылка',
+      },
+    },
+  ]);
   const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const pageNodes = [];
 
   const getCursors = async () => {
     const totalPages = Math.ceil((await getTotalPages()) / PAGE_SIZE);
@@ -123,20 +132,23 @@ function App() {
         },
       },
     } = pageData;
+    console.log(edges);
+
     edges.forEach(
-      (edge) =>
+      (edge: EdgeNode) =>
         (edge.node.updatedAt = new Date(
           edge.node.updatedAt
         ).toLocaleDateString())
     );
-    setRepositoriesList(edges.map((el) => el.node));
+    setRepositoriesList(edges.map((el: EdgeNode) => el));
     setPagesCursors(pages);
     setIsLoading(false);
   };
 
-  const handlePageClick = async (evt) => {
-    const page = evt.target.textContent;
-    const pageData = await getPage(page);
+  const handlePageClick = async (evt: React.ChangeEvent<HTMLUListElement>) => {
+    const page: string =
+      evt.target.textContent !== null ? evt.target.textContent : '0';
+    const pageData = await getPage(parseInt(page));
     const {
       data: {
         viewer: {
@@ -145,12 +157,12 @@ function App() {
       },
     } = pageData;
     edges.forEach(
-      (edge) =>
+      (edge: EdgeNode) =>
         (edge.node.updatedAt = new Date(
           edge.node.updatedAt
         ).toLocaleDateString())
     );
-    setRepositoriesList(edges.map((el) => el.node));
+    setRepositoriesList(edges.map((el: EdgeNode) => el.node));
   };
 
   const getPage = async (page: number) => {
@@ -204,7 +216,7 @@ function App() {
       <div className="container">
         <div className="explorer">
           {isLoading ? (
-            <p style={{ textAlign: 'center' }}>Loading...</p>
+            <p style={{ textAlign: 'center' }}>Загрузка...</p>
           ) : (
             <Explorer items={repositoriesList}></Explorer>
           )}
