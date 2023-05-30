@@ -1,3 +1,5 @@
+//@ts-nocheck
+
 import { useEffect, useState } from 'react';
 import './App.scss';
 import Pagination from './components/Pagination';
@@ -19,75 +21,43 @@ const queryBuilder = (query: string) => {
 };
 
 const getAll = async () => {
-  return await queryBuilder(`
-  query { 
-    viewer { 
-      repositories (first:100, orderBy:{field:UPDATED_AT, direction:DESC}) {
-        totalCount   
-        pageInfo {
-          endCursor
-        }
-        edges {
-          cursor
-          node {
+  const result = await queryBuilder(`
+  {
+    search(query: "code in :name", type: REPOSITORY, first: 10) {
+      edges {
+        node {
+          ... on Repository {
             name
           }
         }
       }
     }
-  }`);
+  }`); 
 };
 
 const getTotalPages = () => {
   return queryBuilder(`
-  query { 
-    viewer { 
-      repositories (first:${PAGE_SIZE}, orderBy:{field:UPDATED_AT, direction:DESC}) {
-        totalCount   
-      }
+  {
+    search(query: "code in :name", type: REPOSITORY, first: 10) {
+      repositoryCount
     }
   }
-  `).then((json) => {
-    const {
-      data: {
-        viewer: {
-          repositories: { totalCount },
-        },
-      },
-    } = json;
-    return totalCount;
-  });
+  `).then((json) => (json.data.search.repositoryCount))
 };
 
 const getCursor = async (pageSize: number, prev: string) => {
   const direction = prev ? `after:"${prev}"` : '';
-  const edge = await queryBuilder(`
-  query { 
-    viewer { 
-      repositories (first:${pageSize}, orderBy:{field:UPDATED_AT, direction:DESC}, ${direction}) {
-        totalCount
-        pageInfo{
-          endCursor
-        }
-        edges {
-          cursor
-          node {
-            name
-          }
-        }
+  const {data:{search:{pageInfo:{endCursor}}}} = await queryBuilder(`
+  {
+    search(query: "code in :name", type: REPOSITORY, first: 10, ${direction}) {
+      pageInfo {
+        startCursor
+        endCursor
+        hasNextPage
       }
     }
   }`);
-  const {
-    data: {
-      viewer: {
-        repositories: {
-          pageInfo: { endCursor },
-        },
-      },
-    },
-  } = edge;
-  return endCursor;
+  return endCursor
 };
 
 function App() {
@@ -105,14 +75,14 @@ function App() {
   ]);
   const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [active, setActiveUser] = useState('');
 
   const getCursors = async () => {
-    const totalPages = Math.ceil((await getTotalPages()) / PAGE_SIZE);
+    const totalPages = Math.ceil((await getTotalPages()) / PAGE_SIZE);        
     const cursors = [''];
-
     setTotalPages(totalPages);
-    await getAll();
-    for (let i = 0; i <= totalPages; i++) {
+
+    for (let i = 0; i <= totalPages && i < 10; i++) {      
       if (i !== 0) {
         const cursor = await getCursor(PAGE_SIZE, cursors[i - 1]);
         cursors.push(cursor);
@@ -121,18 +91,21 @@ function App() {
     return cursors;
   };
 
+  const getUser = async () => {
+    return await queryBuilder (`
+    query { 
+      viewer { 
+        login
+      }
+    }
+    `)
+  } 
+
   const setInitData = async () => {
     setIsLoading(true);
     const pages = await getCursors();
-    const pageData = await getPage(1);
-    const {
-      data: {
-        viewer: {
-          repositories: { edges },
-        },
-      },
-    } = pageData;
-    console.log(edges);
+    const {data:{search:{edges}}} = await getPage(1);   
+    const user = await getUser();
 
     edges.forEach(
       (edge: EdgeNode) =>
@@ -140,6 +113,7 @@ function App() {
           edge.node.updatedAt
         ).toLocaleDateString())
     );
+    setActiveUser(user.data.viewer.login);    
     setRepositoriesList(edges.map((el: EdgeNode) => el));
     setPagesCursors(pages);
     setIsLoading(false);
@@ -148,35 +122,29 @@ function App() {
   const handlePageClick = async (evt: React.ChangeEvent<HTMLUListElement>) => {
     const page: string =
       evt.target.textContent !== null ? evt.target.textContent : '0';
-    const pageData = await getPage(parseInt(page));
-    const {
-      data: {
-        viewer: {
-          repositories: { edges },
-        },
-      },
-    } = pageData;
-    edges.forEach(
-      (edge: EdgeNode) =>
-        (edge.node.updatedAt = new Date(
-          edge.node.updatedAt
-        ).toLocaleDateString())
-    );
-    setRepositoriesList(edges.map((el: EdgeNode) => el.node));
+      const {data:{search:{edges}}} = await getPage(parseInt(page));
+      edges.forEach(
+        (edge: EdgeNode) =>
+          (edge.node.updatedAt = new Date(
+            edge.node.updatedAt
+          ).toLocaleDateString())
+      );
+      setRepositoriesList(edges.map((el: EdgeNode) => el));
+         
+  
   };
 
   const getPage = async (page: number) => {
     if (page == 1) {
       return await queryBuilder(`
       {
-        viewer {
-          repositories(first: ${PAGE_SIZE}, orderBy: {field: UPDATED_AT, direction: DESC}) {      
-            edges {             
-              node {
+        search(query: "code in :name", type: REPOSITORY, first: 10) {
+          edges {
+            node {
+              ... on Repository {
                 name
-                stargazerCount
                 updatedAt
-                url
+                stargazerCount
                 description
               }
             }
@@ -187,16 +155,13 @@ function App() {
     } else {
       return await queryBuilder(`
       {
-        viewer {
-          repositories(first: ${PAGE_SIZE}, orderBy: {field: UPDATED_AT, direction: DESC}, after:"${
-        pageCursors[page - 1]
-      }") {      
-            edges {            
-              node {
+        search(query: "code in :name", type: REPOSITORY, first: 10, after:"${pageCursors[page-1]}") {
+          edges {
+            node {
+              ... on Repository {
                 name
-                stargazerCount
                 updatedAt
-                url
+                stargazerCount
                 description
               }
             }
@@ -209,11 +174,38 @@ function App() {
 
   useEffect(() => {
     setInitData();
+    getAll();
   }, []);
+
+  const handleSearch = async () => {
+    const input = document.getElementById("search");    
+    const result = await getData();
+        
+  }
+
+  const getData   = async (query:string) => {
+    return await queryBuilder(`
+    {
+      search(query: "code in :name", type: REPOSITORY, first: 10) {
+        edges {
+          node {
+            ... on Repository {
+              name
+            }
+          }
+        }
+      }
+    }
+    `)
+  }
 
   return (
     <section className="home">
       <div className="container">
+        <label > поиск:
+          <input id='search' type="text" />
+        </label>
+        <button onClick={handleSearch}>Найти</button>
         <div className="explorer">
           {isLoading ? (
             <p style={{ textAlign: 'center' }}>Загрузка...</p>

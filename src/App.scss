@@ -56,6 +56,12 @@ a {
       margin-bottom: 12px;     
       text-transform: uppercase 
     }
+    .description {
+      max-width: 500px;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+    }
     .info-list {
       list-style: none;
       margin-top: 10px;
