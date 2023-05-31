@@ -1,5 +1,3 @@
-//@ts-nocheck
-
 import { useEffect, useState } from 'react';
 import './App.scss';
 import Pagination from './components/Pagination';
@@ -20,25 +18,25 @@ const queryFetcher = (query: string) => {
   }).then((res) => res.json());
 };
 
-const queryBuilder = async (type: string, prev: string = "",) => {  
-  const searchName = document.getElementById("search-name");
-  const searchStars = document.getElementById("search-stars");  
-  const searchDate = document.getElementById("search-date");
+const queryBuilder = async (type: string, prev: string = "",) => {
+  const searchName = document.getElementById("search-name") as HTMLInputElement | null;
+  const searchStars = document.getElementById("search-stars") as HTMLInputElement | null;
+  const searchDate = document.getElementById("search-date") as HTMLInputElement | null;
 
-  
-  var searchParams = '';  
+
+  var searchParams = '';
   var prevParams = '';
   var query = '';
 
-  if (searchName.value) {
-    searchParams += `${searchName.value} in :name,`    
+  if (searchName?.value) {
+    searchParams += `${searchName.value} in :name,`
   }
 
-  if (searchStars.value) {
+  if (searchStars?.value) {
     searchParams += `stars:>=${searchStars.value},`
-  }  
+  }
 
-  if (searchDate.value) {
+  if (searchDate?.value) {
     searchParams += `pushed:>${searchDate.value},`
   }
 
@@ -85,31 +83,16 @@ const queryBuilder = async (type: string, prev: string = "",) => {
     }
   }  
   `
-  break;
-  default: "no type";
+      break;
+    default: "no type";
   }
   return query;
 };
 
 const getTotalPages = async () => {
-  const queryForTotalPages = await (queryBuilder("totalPages",""))  
+  const queryForTotalPages = await (queryBuilder("totalPages", ""))
   const { data: { search: { repositoryCount } } } = await queryFetcher(queryForTotalPages);
-  return repositoryCount  
-};
-
-const getCursor = async (pageSize: number, prev: string) => {
-  const direction = prev ? `after:"${prev}"` : '';
-  const { data: { search: { pageInfo: { endCursor } } } } = await queryFetcher(`
-  {
-    search(query: "code in :name", type: REPOSITORY, first: 10, ${direction}) {
-      pageInfo {
-        startCursor
-        endCursor
-        hasNextPage
-      }
-    }
-  }`);
-  return endCursor
+  return repositoryCount
 };
 
 function App() {
@@ -127,7 +110,7 @@ function App() {
   ]);
   const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [active, setActiveUser] = useState('');
+  const [activeUser, setActiveUser] = useState('');
 
   const getCursors = async () => {
     const totalPages = Math.ceil((await getTotalPages()) / PAGE_SIZE);
@@ -135,10 +118,10 @@ function App() {
     setTotalPages(totalPages);
 
     for (let i = 0; i <= totalPages && i < 10; i++) {
-      if (i !== 0) { 
-        const getCursorQuery = await queryBuilder("getCursor", cursors[i-1]);
-        const {data:{search:{pageInfo:{endCursor}}}} = await queryFetcher(getCursorQuery);
-        cursors.push(endCursor);     
+      if (i !== 0) {
+        const getCursorQuery = await queryBuilder("getCursor", cursors[i - 1]);
+        const { data: { search: { pageInfo: { endCursor } } } } = await queryFetcher(getCursorQuery);
+        cursors.push(endCursor);
       }
     }
     return cursors;
@@ -154,7 +137,7 @@ function App() {
     `)
   }
 
-  const setInitData = async () => {
+  const updateData = async () => {
     setIsLoading(true);
     const pages = await getCursors();
     const { data: { search: { edges } } } = await getPage(1);
@@ -193,43 +176,46 @@ function App() {
     } else {
       const queryForPage = await queryBuilder("repositoryPage", pageCursors[page - 1]);
       return await queryFetcher(queryForPage);
-
     }
   };
 
   useEffect(() => {
-    setInitData();
+    updateData();
   }, []);
 
-  const handleSearch = async (evt) => {
-    const nameSearchText = document.getElementById("search-name").value;    
-    const searchNameQuery = queryBuilder("repositoryPage", "", nameSearchText)   
-    await setInitData();
-    
+  const handleSearch = async (evt: React.FormEvent<HTMLFormElement>) => {
+    evt.preventDefault();
+    await updateData();
   }
 
   return (
     <section className="home">
       <div className="container">
-        <label > имя:
-          <input id='search-name' type="text" />
-        </label>
-        <label > звезды:
-          <input id='search-stars' type="text" />
-        </label>
-        <label > обновлен:
-          <input id='search-date' type="text" />
-        </label>
-        <button onClick={handleSearch}>Найти</button>
         <div className="explorer">
+          <form className='form' onSubmit={handleSearch} id='search-form'>
+            <div className="inputs">
+              <label > имя:
+                <input id='search-name' className='search-input' type="text" />
+              </label>
+              <label > звезды:
+                <input id='search-stars' type="number" />
+              </label>
+              <label > обновлен:
+                <input id='search-date' type="date" />
+              </label>
+            </div>
+            <button type='submit' className='submit-btn'>Найти</button>
+          </form>
           {isLoading ? (
             <p style={{ textAlign: 'center' }}>Загрузка...</p>
           ) : (
-            <Explorer items={repositoriesList}></Explorer>
+            <>
+              <Explorer items={repositoriesList}></Explorer>
+              <div className="pagination">
+                <Pagination pages={totalPages} handleClick={handlePageClick} />
+              </div>
+            </>
           )}
-        </div>
-        <div className="pagination">
-          <Pagination pages={totalPages} handleClick={handlePageClick} />
         </div>
       </div>
     </section>
