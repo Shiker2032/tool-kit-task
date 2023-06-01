@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useAppSelector, useAppDispatch } from './app/hooks'
+import { updateUser } from "./features/user-slice"
 import './App.scss';
 import Pagination from './components/Pagination';
 import Explorer from './components/Explorer';
 import { EdgeNode } from './types';
+import { gitGraphApi } from './services/gitGraph-service';
 
 const token = import.meta.env.VITE_TOKEN;
 const PAGE_SIZE = 5;
@@ -18,7 +21,7 @@ const queryFetcher = (query: string) => {
   }).then((res) => res.json());
 };
 
-const queryBuilder = async (type: string, prev: string = "",) => {
+const queryBuilder =  (type: string, prev: string = "",) => {
   const searchName = document.getElementById("search-name") as HTMLInputElement | null;
   const searchStars = document.getElementById("search-stars") as HTMLInputElement | null;
   const searchDate = document.getElementById("search-date") as HTMLInputElement | null;
@@ -45,6 +48,14 @@ const queryBuilder = async (type: string, prev: string = "",) => {
   }
 
   switch (type) {
+    case "getUser":
+      query = `
+    {
+      viewer {
+        login
+      }
+    }`
+    break;
     case "getCursor":
       query = `  {
         search(query: "${searchParams}", type: REPOSITORY, first: 10, ${prevParams}) {
@@ -96,6 +107,8 @@ const getTotalPages = async () => {
 };
 
 function App() {
+  const activeLogin = useAppSelector((state) => state.user.login);
+  const dispatch = useAppDispatch();
   const [pageCursors, setPagesCursors] = useState(['']);
   const [repositoriesList, setRepositoriesList] = useState<EdgeNode[]>([
     {
@@ -109,8 +122,10 @@ function App() {
     },
   ]);
   const [totalPages, setTotalPages] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeUser, setActiveUser] = useState('');
+  const [loadingToggle, setLoadingToggle] = useState(false);
+  const {data}  = gitGraphApi.useFetchUserQuery(queryBuilder("getUser"));
+
+
 
   const getCursors = async () => {
     const totalPages = Math.ceil((await getTotalPages()) / PAGE_SIZE);
@@ -128,6 +143,7 @@ function App() {
   };
 
   const getUser = async () => {
+    const getUserQuery =  queryBuilder ("getUser");    
     return await queryFetcher(`
     query { 
       viewer { 
@@ -138,7 +154,7 @@ function App() {
   }
 
   const updateData = async () => {
-    setIsLoading(true);
+    setLoadingToggle(true);
     const pages = await getCursors();
     const { data: { search: { edges } } } = await getPage(1);
     const user = await getUser();
@@ -149,10 +165,9 @@ function App() {
         edge.node.updatedAt
       ).toLocaleDateString())
     );
-    setActiveUser(user.data.viewer.login);
     setRepositoriesList(edges.map((el: EdgeNode) => el));
     setPagesCursors(pages);
-    setIsLoading(false);
+    setLoadingToggle(false);
   };
 
   const handlePageClick = async (evt: React.ChangeEvent<HTMLUListElement>) => {
@@ -188,8 +203,11 @@ function App() {
     await updateData();
   }
 
+
+
   return (
     <section className="home">
+      <h1 style={{ color: "white" }}>{activeLogin}</h1>
       <div className="container">
         <div className="explorer">
           <form className='form' onSubmit={handleSearch} id='search-form'>
@@ -206,7 +224,7 @@ function App() {
             </div>
             <button type='submit' className='submit-btn'>Найти</button>
           </form>
-          {isLoading ? (
+          {loadingToggle ? (
             <p style={{ textAlign: 'center' }}>Загрузка...</p>
           ) : (
             <>
