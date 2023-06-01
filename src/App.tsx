@@ -1,24 +1,21 @@
 import { useEffect, useState } from 'react';
-import { useAppSelector, useAppDispatch } from './app/hooks'
-import { updateUser } from "./features/user-slice"
+// import { useAppSelector, useAppDispatch } from './app/hooks'
+// import { updateUser } from "./features/user-slice"
 import './App.scss';
 import Pagination from './components/Pagination';
 import Explorer from './components/Explorer';
-import { EdgeNode } from './types';
-import { gitGraphApi } from './services/gitGraph-service';
+import { IEdgeNode } from './types/repo';
+// import { gitGraphApi } from './services/gitGraph-service';
+import { useDispatch } from 'react-redux';
+import { queryFetcher } from './utilts/utilts';
+import { PAGE_SIZE } from './utilts/consts';
+import { fetchRepos } from './store/action-creators/repo';
+import { useAppDispatch } from './store/hooks/useTypedSelector';
 
-const token = import.meta.env.VITE_TOKEN;
-const PAGE_SIZE = 5;
-
-const queryFetcher = (query: string) => {
-  return fetch('https://api.github.com/graphql', {
-    method: 'POST',
-    headers: {
-      Authorization: `bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query }),
-  }).then((res) => res.json());
+const getTotalPages = async () => {
+  const queryForTotalPages = await (queryBuilder("totalPages", ""))
+  const { data: { search: { repositoryCount } } } = await queryFetcher(queryForTotalPages);
+  return repositoryCount
 };
 
 const queryBuilder =  (type: string, prev: string = "",) => {
@@ -100,30 +97,17 @@ const queryBuilder =  (type: string, prev: string = "",) => {
   return query;
 };
 
-const getTotalPages = async () => {
-  const queryForTotalPages = await (queryBuilder("totalPages", ""))
-  const { data: { search: { repositoryCount } } } = await queryFetcher(queryForTotalPages);
-  return repositoryCount
-};
-
 function App() {
-  const activeLogin = useAppSelector((state) => state.user.login);
+
   const dispatch = useAppDispatch();
+
+
+
+
   const [pageCursors, setPagesCursors] = useState(['']);
-  const [repositoriesList, setRepositoriesList] = useState<EdgeNode[]>([
-    {
-      node: {
-        description: 'Описание',
-        name: 'Имя',
-        stargazerCount: 0,
-        updatedAt: 'Дата обновления',
-        url: 'ссылка',
-      },
-    },
-  ]);
   const [totalPages, setTotalPages] = useState(0);
-  const [loadingToggle, setLoadingToggle] = useState(false);
-  const {data}  = gitGraphApi.useFetchUserQuery(queryBuilder("getUser"));
+  const [] = useState(false);
+  // const {data}  = gitGraphApi.useFetchUserQuery(queryBuilder("getUser"));
 
 
 
@@ -142,55 +126,26 @@ function App() {
     return cursors;
   };
 
-  const getUser = async () => {
-    const getUserQuery =  queryBuilder ("getUser");    
-    return await queryFetcher(`
-    query { 
-      viewer { 
-        login
-      }
-    }
-    `)
-  }
 
   const updateData = async () => {
-    setLoadingToggle(true);
     const pages = await getCursors();
-    const { data: { search: { edges } } } = await getPage(1);
-    const user = await getUser();
-
-    edges.forEach(
-      (edge: EdgeNode) =>
-      (edge.node.updatedAt = new Date(
-        edge.node.updatedAt
-      ).toLocaleDateString())
-    );
-    setRepositoriesList(edges.map((el: EdgeNode) => el));
-    setPagesCursors(pages);
-    setLoadingToggle(false);
+    await getPage(1);   
+    setPagesCursors(pages);    
   };
 
   const handlePageClick = async (evt: React.ChangeEvent<HTMLUListElement>) => {
     const page: string =
       evt.target.textContent !== null ? evt.target.textContent : '0';
-    const { data: { search: { edges } } } = await getPage(parseInt(page));
-    edges.forEach(
-      (edge: EdgeNode) =>
-      (edge.node.updatedAt = new Date(
-        edge.node.updatedAt
-      ).toLocaleDateString())
-    );
-    setRepositoriesList(edges.map((el: EdgeNode) => el));
+      await getPage(parseInt(page));   
   };
 
   const getPage = async (page: number) => {
     if (page == 1) {
-      const queryForFirstPage = await queryBuilder("repositoryPage", "");
-      return await queryFetcher(queryForFirstPage);
-
+      const query = queryBuilder("repositoryPage")
+       dispatch(fetchRepos(query));
     } else {
       const queryForPage = await queryBuilder("repositoryPage", pageCursors[page - 1]);
-      return await queryFetcher(queryForPage);
+      dispatch(fetchRepos(queryForPage));
     }
   };
 
@@ -203,11 +158,8 @@ function App() {
     await updateData();
   }
 
-
-
   return (
     <section className="home">
-      <h1 style={{ color: "white" }}>{activeLogin}</h1>
       <div className="container">
         <div className="explorer">
           <form className='form' onSubmit={handleSearch} id='search-form'>
@@ -223,17 +175,14 @@ function App() {
               </label>
             </div>
             <button type='submit' className='submit-btn'>Найти</button>
-          </form>
-          {loadingToggle ? (
-            <p style={{ textAlign: 'center' }}>Загрузка...</p>
-          ) : (
+          </form>          
             <>
-              <Explorer items={repositoriesList}></Explorer>
+              <Explorer></Explorer>
               <div className="pagination">
                 <Pagination pages={totalPages} handleClick={handlePageClick} />
               </div>
             </>
-          )}
+          
         </div>
       </div>
     </section>

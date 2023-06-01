@@ -1,11 +1,14 @@
-import { IExplorer } from '../types';
 
-const Explorer = ({ items }: IExplorer) => {
-  items.map((el) => el.node);
+import { useTypedSelector } from '../store/hooks/useTypedSelector';
 
+const Explorer = () => {  
+  const {repos} = useTypedSelector(store => store.repos)
+
+  
   return (
     <>
-      {items.map((item, i) => (
+    
+      {repos && repos.map((item, i) => (
         <div key={i} className="card">
           <h3 className="title">{item.node.name}</h3>
           <p className="description">
