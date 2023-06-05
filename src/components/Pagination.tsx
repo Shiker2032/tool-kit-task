@@ -1,6 +1,6 @@
 interface IPagination {
   pages: number;
-  handleClick(evt: any): any;
+  handleClick: () => void;
 }
 
 const Pagination = ({ pages, handleClick }: IPagination) => {

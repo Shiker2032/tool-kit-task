@@ -1,9 +1,7 @@
-import { Dispatch } from "redux"
-import { FetchRepoActionTypes, IEdgeNode, RepoAction } from "../../types/repo"
+import { FetchRepoActionTypes, IEdgeNode } from "../../types/repo"
 import { queryFetcher } from "../../utilts/utilts"
-const query = "test"
 
-export const fetchRepos = (query:string = "") => {
+export const fetchRepos = (query = "") => {
     return async (dispatch) => {
         try {           
             dispatch({type: FetchRepoActionTypes.FETCH_REPOS})

@@ -1,6 +1,6 @@
-import { FetchRepoActionTypes, IRepoState, RepoAction } from "../../types/repo"
+import { FetchRepoActionTypes, IRepoState } from "../../types/repo"
 
-const initialState: any = {
+const initialState: IRepoState = {
     repos: [],
     loading: false,
     error: null,

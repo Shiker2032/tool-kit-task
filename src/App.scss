@@ -5,20 +5,19 @@
 }
 
 #root {
-    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
 ul {
-    list-style: none;
+  list-style: none;
 }
 
 a {
-  
-    color: inherit;
+  color: inherit;
 }
 
 .home {
-    padding: 100px 0;
+  padding: 100px 0;
   display: flex;
   flex-direction: column;
   place-content: center;
@@ -43,7 +42,7 @@ a {
   font-size: 14px;
   gap: 20px;
   display: flex;
-  color: white;  
+  color: white;
   .form {
     display: flex;
     flex-direction: column;
@@ -73,16 +72,15 @@ a {
     text-align: initial;
     .title {
       text-align: center;
-      margin-bottom: 12px;     
+      margin-bottom: 12px;
       text-transform: uppercase;
       cursor: pointer;
-      
     }
     .description {
       max-width: 500px;
-     white-space: nowrap;
-     overflow: hidden;
-     text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .info-list {
       list-style: none;
@@ -115,5 +113,31 @@ a {
 
   @media (min-width: 767px) {
     font-size: 24px;
+  }
+}
+
+//repo card ====================================================
+.repository-card {
+  background-color: #272727;
+  color: white;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  .content {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    .info {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      border: 1px solid white;
+      background-color: #474747;
+    }
+
+    img {
+      width: 200px;
+      border-radius: 200px;
+    }
   }
 }

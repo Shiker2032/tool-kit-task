@@ -1,43 +1,46 @@
-export interface IEdgeNode  {
-    node: {
-        description: string,
-          name: string,
-          stargazerCount: number,
-          updatedAt: string,
-          url: string,
-          id: string,
-    }
-  }
+export interface IEdgeNode {
+  node: {
+    description: string;
+    name: string;
+    stargazerCount: number;
+    updatedAt: string;
+    url: string;
+    id: string;
+  };
+}
 
-  //================================
+//================================
 
 interface IRepoState {
-    repos: any[],
-    loading: boolean,
-    error: null | string
+  repos: IEdgeNode[];
+  loading: boolean;
+  error: null | string;
 }
 
 enum FetchRepoActionTypes {
-    FETCH_REPOS_SUCCESS = "FETCH_REPOS_SUCCESS",
-    FETCH_REPOS_ERROR = "FETCH_REPOS_ERROR",
-    FETCH_REPOS = "FETCH_REPOS",
+  FETCH_REPOS_SUCCESS = 'FETCH_REPOS_SUCCESS',
+  FETCH_REPOS_ERROR = 'FETCH_REPOS_ERROR',
+  FETCH_REPOS = 'FETCH_REPOS',
 }
 
 interface IFetchRepoAction {
-    type: FetchRepoActionTypes.FETCH_REPOS
+  type: FetchRepoActionTypes.FETCH_REPOS;
 }
 
 interface IFetchRepoSuccessAction {
-    type: FetchRepoActionTypes.FETCH_REPOS_SUCCESS,
-    payload: any[]
+  type: FetchRepoActionTypes.FETCH_REPOS_SUCCESS;
+  payload: any[];
 }
 
 interface IFetchRepoErrorAction {
-    type: FetchRepoActionTypes.FETCH_REPOS_ERROR
-    payload: string
+  type: FetchRepoActionTypes.FETCH_REPOS_ERROR;
+  payload: string;
 }
 
-type RepoAction = IFetchRepoAction | IFetchRepoErrorAction | IFetchRepoSuccessAction;
+type RepoAction =
+  | IFetchRepoAction
+  | IFetchRepoErrorAction
+  | IFetchRepoSuccessAction;
 
-export type {IRepoState, RepoAction}
-export {FetchRepoActionTypes}
+export type { IRepoState, RepoAction };
+export { FetchRepoActionTypes };
