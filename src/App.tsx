@@ -1,16 +1,11 @@
 import { useEffect, useState } from 'react';
-// import { useAppSelector, useAppDispatch } from './app/hooks'
-// import { updateUser } from "./features/user-slice"
 import './App.scss';
 import Pagination from './components/Pagination';
 import Explorer from './components/Explorer';
-import { IEdgeNode } from './types/repo';
-// import { gitGraphApi } from './services/gitGraph-service';
-import { useDispatch } from 'react-redux';
 import { queryFetcher } from './utilts/utilts';
 import { PAGE_SIZE } from './utilts/consts';
 import { fetchRepos } from './store/action-creators/repo';
-import { useAppDispatch } from './store/hooks/useTypedSelector';
+import { useAppDispatch, useTypedSelector } from './store/hooks/useTypedSelector';
 
 const getTotalPages = async () => {
   const queryForTotalPages = await (queryBuilder("totalPages", ""))
@@ -18,7 +13,7 @@ const getTotalPages = async () => {
   return repositoryCount
 };
 
-const queryBuilder =  (type: string, prev: string = "",) => {
+const queryBuilder = (type: string, prev: string = "",) => {
   const searchName = document.getElementById("search-name") as HTMLInputElement | null;
   const searchStars = document.getElementById("search-stars") as HTMLInputElement | null;
   const searchDate = document.getElementById("search-date") as HTMLInputElement | null;
@@ -52,7 +47,7 @@ const queryBuilder =  (type: string, prev: string = "",) => {
         login
       }
     }`
-    break;
+      break;
     case "getCursor":
       query = `  {
         search(query: "${searchParams}", type: REPOSITORY, first: 10, ${prevParams}) {
@@ -85,6 +80,7 @@ const queryBuilder =  (type: string, prev: string = "",) => {
             stargazerCount
             updatedAt
             url
+            id
           }
         }
       }
@@ -93,22 +89,17 @@ const queryBuilder =  (type: string, prev: string = "",) => {
   `
       break;
     default: "no type";
-  }
+  } 
   return query;
 };
 
 function App() {
 
   const dispatch = useAppDispatch();
-
-
-
-
+  const [isLoading, setIsLoading] = useState(false);
   const [pageCursors, setPagesCursors] = useState(['']);
   const [totalPages, setTotalPages] = useState(0);
   const [] = useState(false);
-  // const {data}  = gitGraphApi.useFetchUserQuery(queryBuilder("getUser"));
-
 
 
   const getCursors = async () => {
@@ -128,21 +119,30 @@ function App() {
 
 
   const updateData = async () => {
-    const pages = await getCursors();
-    await getPage(1);   
-    setPagesCursors(pages);    
+    try {
+      setIsLoading(true);
+
+      const pages = await getCursors();
+      await getPage(1);
+      setPagesCursors(pages);
+    } catch (err) {
+      console.log(err);
+    }
+    finally {
+      setIsLoading(false)
+    }
   };
 
   const handlePageClick = async (evt: React.ChangeEvent<HTMLUListElement>) => {
     const page: string =
       evt.target.textContent !== null ? evt.target.textContent : '0';
-      await getPage(parseInt(page));   
+    await getPage(parseInt(page));
   };
 
   const getPage = async (page: number) => {
     if (page == 1) {
       const query = queryBuilder("repositoryPage")
-       dispatch(fetchRepos(query));
+      dispatch(fetchRepos(query));
     } else {
       const queryForPage = await queryBuilder("repositoryPage", pageCursors[page - 1]);
       dispatch(fetchRepos(queryForPage));
@@ -153,6 +153,7 @@ function App() {
     updateData();
   }, []);
 
+
   const handleSearch = async (evt: React.FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
     await updateData();
@@ -161,28 +162,30 @@ function App() {
   return (
     <section className="home">
       <div className="container">
-        <div className="explorer">
-          <form className='form' onSubmit={handleSearch} id='search-form'>
-            <div className="inputs">
-              <label > имя:
-                <input id='search-name' className='search-input' type="text" />
-              </label>
-              <label > звезды:
-                <input id='search-stars' type="number" />
-              </label>
-              <label > обновлен:
-                <input id='search-date' type="date" />
-              </label>
-            </div>
-            <button type='submit' className='submit-btn'>Найти</button>
-          </form>          
+        <div className="explorer">          
+          
+            <form className='form' onSubmit={handleSearch} id='search-form'>
+              <div className="inputs">
+                <label > имя:
+                  <input id='search-name' defaultValue={"code"} className='search-input' type="text" />
+                </label>
+                <label > звезды:
+                  <input id='search-stars' type="number" />
+                </label>
+                <label > обновлен:
+                  <input id='search-date' type="date" />
+                </label>
+              </div>
+              <button type='submit' disabled={isLoading} className='submit-btn'>Найти</button>
+            </form>
+            {isLoading ? <p>Загрузка...</p> : (
             <>
               <Explorer></Explorer>
               <div className="pagination">
                 <Pagination pages={totalPages} handleClick={handlePageClick} />
               </div>
             </>
-          
+            )}
         </div>
       </div>
     </section>

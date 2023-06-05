@@ -4,7 +4,8 @@ export interface IEdgeNode  {
           name: string,
           stargazerCount: number,
           updatedAt: string,
-          url: string
+          url: string,
+          id: string,
     }
   }
 

@@ -4,7 +4,7 @@ import { queryFetcher } from "../../utilts/utilts"
 const query = "test"
 
 export const fetchRepos = (query:string = "") => {
-    return async (dispatch: Dispatch<any>): Promise<void> => {
+    return async (dispatch) => {
         try {           
             dispatch({type: FetchRepoActionTypes.FETCH_REPOS})
             const {data:{search:{edges}}} = await queryFetcher(query);
